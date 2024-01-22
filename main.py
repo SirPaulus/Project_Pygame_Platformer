@@ -278,3 +278,258 @@ class Player(sprite.Sprite):
     def die(self):
         time.wait(500)
         self.teleporting(self.startX, self.startY)  # перемещаемся в начальные координаты
+
+
+class Camera(object):
+    def __init__(self, camera_func, width, height):
+        self.camera_func = camera_func
+        self.state = Rect(0, 0, width, height)
+
+    def apply(self, target):
+        return target.rect.move(self.state.topleft)
+
+    def update(self, target):
+        self.state = self.camera_func(self.state, target.rect)
+
+
+def camera_configure(camera, target_rect):
+    l, t, _, _ = target_rect
+    _, _, w, h = camera
+    l, t = -l + WIN_WIDTH / 2, -t + WIN_HEIGHT / 2
+
+    l = min(0, l)  # Не движемся дальше левой границы
+    l = max(-(camera.width - WIN_WIDTH), l)  # Не движемся дальше правой границы
+    t = max(-(camera.height - WIN_HEIGHT), t)  # Не движемся дальше нижней границы
+    t = min(0, t)  # Не движемся дальше верхней границы
+
+    return Rect(l, t, w, h)
+
+
+def loadLevel(lvl):
+    global playerX, playerY  # объявляем глобальные переменные, это координаты героя
+
+    levelFile = open('levels/' + lvl)
+    line = " "
+    commands = []
+    while line[0] != "/":  # пока не нашли символ завершения файла
+        line = levelFile.readline()  # считываем построчно
+        if line[0] == "[":  # если нашли символ начала уровня
+            while line[0] != "]":  # то, пока не нашли символ конца уровня
+                line = levelFile.readline()  # считываем построчно уровень
+                if line[0] != "]":  # и если нет символа конца уровня
+                    endLine = line.find("|")  # то ищем символ конца строки
+                    level.append(line[0: endLine])  # и добавляем в уровень строку от начала до символа "|"
+
+        if line[0] != "":  # если строка не пустая
+            commands = line.split()  # разбиваем ее на отдельные команды
+            if len(commands) > 1:  # если количество команд > 1, то ищем эти команды
+                if commands[0] == "player":  # если первая команда - player
+                    playerX = int(commands[1])  # то записываем координаты героя
+                    playerY = int(commands[2])
+                if commands[0] == "portal":  # если первая команда portal, то создаем портал
+                    tp = BlockTeleport(int(commands[1]), int(commands[2]), int(commands[3]), int(commands[4]))
+                    entities.add(tp)
+                    platforms.append(tp)
+                    animatedEntities.add(tp)
+                if commands[0] == "monster":  # если первая команда monster, то создаем монстра
+                    mn = Monster(int(commands[1]), int(commands[2]), int(commands[3]), int(commands[4]),
+                                 int(commands[5]), int(commands[6]))
+                    entities.add(mn)
+                    platforms.append(mn)
+                    monsters.add(mn)
+
+
+def terminate():
+    pygame.quit()
+    sys.exit
+
+
+pygame.init()
+screen_size = (WIN_WIDTH, WIN_HEIGHT)
+screen = pygame.display.set_mode(screen_size)
+clock = pygame.time.Clock()
+FPS = 50
+
+
+def start_screen():  # Начальный экран
+    intro_text = ["                 Платформер", "",
+                  "",
+                  "Чтобы выбрать уровень нажмите:",
+                  "                     1,   2,   3"]
+
+    image = pygame.image.load('data/intro.png')
+    image.set_colorkey(COLOR)
+
+    fon = pygame.transform.scale(image, (WIN_WIDTH, WIN_HEIGHT))
+    screen.blit(fon, (0, 0))
+    font = pygame.font.Font(None, 30)
+    text_coord = 190
+    for line in intro_text:
+        string_rendered = font.render(line, 1, pygame.Color('white'))
+        intro_rect = string_rendered.get_rect()
+        text_coord += 10
+        intro_rect.top = text_coord
+        intro_rect.x = 250
+        text_coord += intro_rect.height
+        screen.blit(string_rendered, intro_rect)
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.KEYDOWN and event.key == K_1:
+                main('1.txt')
+                return
+            elif event.type == pygame.KEYDOWN and event.key == K_2:
+                main('2.txt')
+                return
+            elif event.type == pygame.KEYDOWN and event.key == K_3:
+                main('3.txt')
+                return
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
+def terminate():
+    pygame.quit()
+    sys.exit
+
+
+pygame.init()
+screen_size = (WIN_WIDTH, WIN_HEIGHT)
+screen = pygame.display.set_mode(screen_size)
+clock = pygame.time.Clock()
+FPS = 50
+
+
+def gameover_screen():  # Экран победы
+    intro_text = ["Конец игры!"]
+
+    image = pygame.image.load('data/fin.jpg')
+    image.set_colorkey(COLOR)
+
+    fon = pygame.transform.scale(image, (WIN_WIDTH, WIN_HEIGHT))
+    screen.blit(fon, (0, 0))
+    font = pygame.font.Font(None, 50)
+    text_coord = 245
+    for line in intro_text:
+        string_rendered = font.render(line, 1, pygame.Color('white'))
+        intro_rect = string_rendered.get_rect()
+        text_coord += 10
+        intro_rect.top = text_coord
+        intro_rect.x = 300
+        text_coord += intro_rect.height
+        screen.blit(string_rendered, intro_rect)
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.KEYDOWN or \
+                    event.type == pygame.MOUSEBUTTONDOWN:
+                terminate()
+                return
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
+def main(lvl):
+    loadLevel(lvl)
+    mscs = ['mischievous_robot.mp3', 'gestation.mp3', 'quiet.mp3']
+    pygame.mixer.pre_init(44100, -16, 1, 512)
+    pygame.init()  # Инициация PyGame, обязательная строчка
+    pygame.mixer.init()
+    pygame.mixer.music.load('sounds/' + random.choice(mscs))
+    pygame.mixer.music.play(-1)
+    vol = 0.5
+    pygame.mixer.music.set_volume(vol)
+    screen = pygame.display.set_mode(DISPLAY)  # Создаем окошко
+    pygame.display.set_caption("Super Mario Boy")  # Пишем в шапку
+    bg = Surface((WIN_WIDTH, WIN_HEIGHT))  # Создание видимой поверхности
+    # будем использовать как фон
+    bg.fill(Color(BACKGROUND_COLOR))  # Заливаем поверхность сплошным цветом
+
+    left = right = False  # по умолчанию - стоим
+    up = False
+    flying = False
+
+    hero = Player(playerX, playerY)  # создаем героя по (x,y) координатам
+    entities.add(hero)
+
+    timer = pygame.time.Clock()
+    x = y = 0  # координаты
+    for row in level:  # вся строка
+        for col in row:  # каждый символ
+            if col == "-":
+                pf = Platform(x, y)
+                entities.add(pf)
+                platforms.append(pf)
+            if col == "*":
+                bd = BlockDie(x, y)
+                entities.add(bd)
+                platforms.append(bd)
+            if col == "P":
+                pr = Door(x, y)
+                entities.add(pr)
+                platforms.append(pr)
+                animatedEntities.add(pr)
+
+            x += PLATFORM_WIDTH  # блоки платформы ставятся на ширине блоков
+        y += PLATFORM_HEIGHT  # то же самое и с высотой
+        x = 0  # на каждой новой строчке начинаем с нуля
+
+    total_level_width = len(level[0]) * PLATFORM_WIDTH  # Высчитываем фактическую ширину уровня
+    total_level_height = len(level) * PLATFORM_HEIGHT  # высоту
+
+    camera = Camera(camera_configure, total_level_width, total_level_height)
+
+    while not hero.winner:  # Основной цикл программы
+        timer.tick(60)
+        for e in pygame.event.get():  # Обрабатываем события
+            if e.type == QUIT:
+                pygame.quit()
+                quit()
+            if e.type == KEYDOWN and e.key == K_o:
+                vol -= 0.1
+                pygame.mixer.music.set_volume(vol)
+            if e.type == KEYDOWN and e.key == K_p:
+                vol += 0.1
+                pygame.mixer.music.set_volume(vol)
+            if e.type == KEYDOWN and e.key == K_UP:
+                up = True
+            if e.type == KEYDOWN and e.key == K_LEFT:
+                left = True
+            if e.type == KEYDOWN and e.key == K_RIGHT:
+                right = True
+            if e.type == KEYDOWN and e.key == K_LSHIFT:
+                flying = True
+
+            if e.type == KEYUP and e.key == K_UP:
+                up = False
+            if e.type == KEYUP and e.key == K_RIGHT:
+                right = False
+            if e.type == KEYUP and e.key == K_LEFT:
+                left = False
+            if e.type == KEYUP and e.key == K_LSHIFT:
+                flying = False
+
+        screen.blit(bg, (0, 0))  # Каждую итерацию необходимо всё перерисовывать
+
+        animatedEntities.update()  # показываеaм анимацию
+        monsters.update(platforms)  # передвигаем всех монстров
+        camera.update(hero)  # центризируем камеру относительно персонажа
+        hero.update(left, right, up, flying, platforms)  # передвижение
+        for e in entities:
+            screen.blit(e.image, camera.apply(e))
+        pygame.display.update()  # обновление и вывод всех изменений на экран
+    pygame.mixer.music.stop()
+    gameover_screen()
+
+
+level = []
+entities = pygame.sprite.Group()  # Все объекты
+animatedEntities = pygame.sprite.Group()  # все анимированные объекты, за исключением героя
+monsters = pygame.sprite.Group()  # Все передвигающиеся объекты
+platforms = []  # то, во что мы будем врезаться или опираться
+if __name__ == "__main__":
+    start_screen()
