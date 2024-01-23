@@ -12,7 +12,7 @@ DISPLAY = (WIN_WIDTH, WIN_HEIGHT)  # Группируем ширину и выс
 BACKGROUND_COLOR = "#CCCCFF"
 
 MOVE_SPEED = 6
-SLOW_DOWN = 3.5  # ускорение
+SLOW_DOWN = 3.5  # замедленное падение
 EXTRA_JUMP = 9
 WIDTH = 21.5
 HEIGHT = 30.5
@@ -51,10 +51,6 @@ PLATFORM_COLOR = "#000000"
 ANIMATION_BLOCKTELEPORT = [
     ('data/portal2.png'),
     ('data/portal1.png')]
-
-ANIMATION_PRINCESS = [
-    ('data/princess_l.png'),
-    ('data/princess_r.png')]
 
 
 class Platform(sprite.Sprite):
